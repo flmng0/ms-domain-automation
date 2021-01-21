@@ -2,49 +2,58 @@ import requests
 import os
 
 # Constants
-APP_SLUG = 'msda'
-CACHE_PATH = f'/var/lib/{APP_SLUG}'
-VERISON_FILE f'{CACHE_PATH}/version'
+CACHE_PATH = f"/home/admtimda/ms-domain-automation/cache"
+VERSION_FILE = f"{CACHE_PATH}/version.txt"
 
 # O365 Constants
-URL_PREFIX = 'https://endpoints.office.com'
+O365_PREFIX = "https://endpoints.office.com"
 
-def has_updates(client_id, instance='Worldwide', proxies=None):
-    # Construct the request URL
-    request_url = f'{URL_PREFIX}/version?clientrequestid={client_id}'
+class Util():
+    def __init__(self, client_id, instance="Worldwide", proxies=None):
+        self.client_id = client_id
+        self.instance = instance
+        self.proxies = proxies
 
-    # Send the actual request
-    data = requests.get(request_url, proxies=proxies).json()
+    # Check whether there were any updates
+    def has_updates(self):
+        # Construct the request URL
+        request_url = f"{O365_PREFIX}/version?clientrequestid={self.client_id}"
 
-    for obj in data:
-        if obj['instance'] == instance:
-            latest_version = int(obj['latest'])
+        # Send the actual request
+        data = requests.get(request_url, proxies=self.proxies).json()
 
-    base = os.path.dirname(VERSION_FILE)
-    if not os.path.exists(base):
-        os.makedirs(base)
+        # Find the version for the requested instance
+        obj = next(obj for obj in data if obj["instance"] == self.instance)
+        latest_version = int(obj["latest"])
 
-    old_version = 0
-    if os.path.isfile(VERSION_FILE):
-        with open(VERSION_FILE, 'r') as f:
-            old_version = int(f.readline())
-    
-    updated = old_version < latest_version
+        # Create the directory for the version file if it doesn't already
+        # exist
+        base = os.path.dirname(VERSION_FILE)
+        if not os.path.exists(base):
+            os.makedirs(base)
 
-    if updated:
-        with open(VERSION_FILE, 'w') as f:
+        # Find the version that the endpoints were at the last time this
+        # script was run.
+        old_version = 0
+        if os.path.isfile(VERSION_FILE):
+            with open(VERSION_FILE, "r") as f:
+                old_version = int(f.readline())
+
+        updated = old_version < latest_version
+
+        with open(VERSION_FILE, "w") as f:
             f.write(str(latest_version))
 
-    return {
-        'did_update': updated,
-        'old_version': old_version,
-    }
+        return {
+            "did_update": updated,
+            "old_version": old_version,
+        }
 
-def get_service_areas(client_id, instance='Worldwide', proxies=None):
-    request_url = f'{URL_PREFIX}/endpoints/{instance}/?clientrequestid={client_id}'
+    # Get a full dictionaries with { id: serviceArea, ... }
+    def get_service_areas(self):
+        request_url = f"{O365_PREFIX}/endpoints/{self.instance}/?clientrequestid={self.client_id}"
 
-    data = requests.get(request_url, proxies=proxies).json()
+        data = requests.get(request_url, proxies=self.proxies).json()
 
-    return {obj['id']: obj['serviceArea'] for obj in data}
-
+        return {obj["id"]: obj["serviceArea"] for obj in data}
 
