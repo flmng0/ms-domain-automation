@@ -1,0 +1,10 @@
+# FMC Process
+Create group for each Service Area.
+Every time the endpoints update, create a nested group with the version number in each service area
+
+# Email notification
+ - Effected service areas
+ - Old version
+ - New version
+ - HTML Formatted table to list the changes
+ - Start with a basic summary, include a table detailing every change at the end.
