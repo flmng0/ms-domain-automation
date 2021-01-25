@@ -49,11 +49,38 @@ class Util():
             "old_version": old_version,
         }
 
-    # Get a full dictionaries with { id: serviceArea, ... }
-    def get_service_areas(self):
-        request_url = f"{O365_PREFIX}/endpoints/{self.instance}/?clientrequestid={self.client_id}"
+    # Collect all endpoints as a dictionary:
+    #   endpoints {
+    #       'ips': { '<serviceArea>': set with ips, '<serviceArea2>': ... },
+    #       'urls': { '<serviceArea>': set with urls, '<serviceArea2>': ... },
+    #   }
+    def collect_endpoints(self):
+        ips = {}
+        urls = {}
 
+        request_url = f"{O365_PREFIX}/endpoints/{self.instance}/?clientrequestid={self.client_id}&NoIPv6=true"
         data = requests.get(request_url, proxies=self.proxies).json()
 
-        return {obj["id"]: obj["serviceArea"] for obj in data}
+        for obj in data:
+            sa = obj['serviceArea']
+            
+            # Initialize the sets if they don't exist
+            if not sa in ips: ips[sa] = set()
+            if not sa in urls: urls[sa] = set()
 
+            # If there are IPs listed in this endpoint, add them to the
+            # `ips` set.
+            if 'ips' in obj: 
+                ips[sa] = ips[sa] | {ip for ip in obj['ips']}
+
+            # If there are URLs listed in this endpoint, add them to the
+            # `urls` set.
+            if 'urls' in obj: 
+                # FMC processes URLs by substring matching and doesn't
+                # support traditional wildcard matching (*).
+                urls[sa] = urls[sa] | {url.replace('*', '') for url in obj['urls']}
+            
+        return {
+            'ips': ips,
+            'urls': urls,
+        }
