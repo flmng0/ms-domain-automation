@@ -1,19 +1,30 @@
-from util import Util, VERSION_FILE
-import uuid
+from util import Util
+from firepower import Firepower
+from uuid import uuid3, NAMESPACE_URL
+
+import getpass
 import pprint
 import os
 
+def env_or_prompt(name, prompt):
+    out = os.getenv(name) or input(prompt)
+
 if __name__ == '__main__':
-    id = uuid.uuid3(uuid.NAMESPACE_URL, "network.nt.gov.au")
-    util = Util(id)
+    uuid = uuid3(NAMESPACE_URL, 'network.nt.gov.au')
+    util = Util(uuid)
 
-    pp = pprint.PrettyPrinter(indent=4)
+    update_info = util.has_updates()
 
-    print('\n\n=========== Updates? ============')
-    pp.pprint(util.has_updates())
+    fmc_host = env_or_prompt('FMC_HOST', 'Input FMC Host IP: ')
+    fmc_user = env_or_prompt('FMC_USER', 'Input FMC Username: ')
+    fmc_pass = getpass.getpass('Enter FMC password: ')
 
-    print('\n\n=========== Service Areas ============')
-    pp.pprint(util.get_service_areas())
+    if update_info['did_update']:
+        endpoints = util.collect_endpoints()
+
+        fmc = Firepower(fmc_host, (fmc_user, fmc_pass))
+        fmc.update(endpoints)
+
 
 # Some pseudo-code for workflow:
 '''
