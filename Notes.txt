@@ -2,6 +2,16 @@
 Create group for each Service Area.
 Every time the endpoints update, create a nested group with the version number in each service area
 
+
+###### IMPORTANT #######
+There needs to be some method for persistent re-running inside of the main method itself.
+Otherwise, the user's name and password will need to be re-input every time the script is
+run.
+
+Repeating: Either implement scheduling in the script, or have some sort of persistent
+state file, which would require passwords stored in practically plain-text.
+###### IMPORTANT #######
+
 # Email notification
  - Effected service areas
  - Old version
