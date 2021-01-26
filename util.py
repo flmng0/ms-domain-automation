@@ -55,8 +55,7 @@ class Util():
     #       'urls': { '<serviceArea>': set with urls, '<serviceArea2>': ... },
     #   }
     def collect_endpoints(self):
-        ips = {}
-        urls = {}
+        out = {}
 
         request_url = f"{O365_PREFIX}/endpoints/{self.instance}/?clientrequestid={self.client_id}&NoIPv6=true"
         data = requests.get(request_url, proxies=self.proxies).json()
@@ -65,22 +64,25 @@ class Util():
             sa = obj['serviceArea']
             
             # Initialize the sets if they don't exist
-            if not sa in ips: ips[sa] = set()
-            if not sa in urls: urls[sa] = set()
+            #
+            # Sets are used instead of lists, because it forces unique
+            # items (no repeats).
+            if not sa in out:
+                out[sa] = {
+                    'ips': set(),
+                    'urls': set(),
+                }
 
             # If there are IPs listed in this endpoint, add them to the
             # `ips` set.
             if 'ips' in obj: 
-                ips[sa] = ips[sa] | {ip for ip in obj['ips']}
+                out[sa]['ips'] = out[sa]['ips'] | {ip for ip in obj['ips']}
 
             # If there are URLs listed in this endpoint, add them to the
             # `urls` set.
             if 'urls' in obj: 
                 # FMC processes URLs by substring matching and doesn't
                 # support traditional wildcard matching (*).
-                urls[sa] = urls[sa] | {url.replace('*', '') for url in obj['urls']}
+                out[sa]['urls'] = out[sa]['urls'] | {url.replace('*','') for url in obj['urls']}
             
-        return {
-            'ips': ips,
-            'urls': urls,
-        }
+        return out
