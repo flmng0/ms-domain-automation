@@ -3,7 +3,8 @@ import os
 
 # Constants
 CACHE_PATH = f"/home/admtimda/ms-domain-automation/cache"
-VERSION_FILE = f"{CACHE_PATH}/version.txt"
+UUIDS_FILE = f"{CACHE_PATH}/uuids.json"
+VERSION_FILE = f"{CACHE_PATH}/version"
 
 # O365 Constants
 O365_PREFIX = "https://endpoints.office.com"
@@ -24,7 +25,7 @@ class Util():
 
         # Find the version for the requested instance
         obj = next(obj for obj in data if obj["instance"] == self.instance)
-        latest_version = int(obj["latest"])
+        new_version = int(obj["latest"])
 
         # Create the directory for the version file if it doesn't already
         # exist
@@ -39,14 +40,15 @@ class Util():
             with open(VERSION_FILE, "r") as f:
                 old_version = int(f.readline())
 
-        updated = old_version < latest_version
+        updated = old_version < new_version
 
         with open(VERSION_FILE, "w") as f:
-            f.write(str(latest_version))
+            f.write(str(new_version))
 
         return {
             "did_update": updated,
             "old_version": old_version,
+            "new_version": new_version
         }
 
     # Collect all endpoints as a dictionary:
