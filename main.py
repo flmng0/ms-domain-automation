@@ -16,28 +16,29 @@ def env_or_prompt(name, prompt):
 
     return out
 
-if __name__ == '__main__':
+def main():
     requests.packages.urllib3.disable_warnings()
-
-    fmc_host = env_or_prompt('FMC_HOST', 'Input FMC Host IP: ')
-    fmc_user = env_or_prompt('FMC_USER', 'Input FMC Username: ')
-    fmc_pass = getpass.getpass('Enter FMC password: ')
-
-    print(fmc_host, fmc_user, fmc_pass)
 
     uuid = uuid3(NAMESPACE_URL, 'network.nt.gov.au')
     util = Util(uuid)
 
-    update_info = util.has_updates()
+    cached_version = util.get_cached_version()
+    latest_version = util.get_latest_version()
 
-    if update_info['did_update']:
+    if int(cached_version) < int(latest_version):
         print(f'Endpoint update has occured since last run.')
-        print(f'    From: {update_info["old_version"]}')
-        print(f'      To: {update_info["new_version"]}')
+        print(f'    From: {cached_version}')
+        print(f'      To: {latest_version}')
         endpoints = util.collect_endpoints()
         print(endpoints.keys())
+        return
 
-        exit()
+        fmc_host = env_or_prompt('FMC_HOST', 'Input FMC Host IP: ')
+        fmc_user = env_or_prompt('FMC_USER', 'Input FMC Username: ')
+        fmc_pass = getpass.getpass('Enter FMC password: ')
+
         fmc = Firepower(fmc_host, (fmc_user, fmc_pass))
-        fmc.update(endpoints, update_info['new_version'])
+        fmc.update(endpoints, latest_version)
 
+if __name__ == '__main__':
+    main()
