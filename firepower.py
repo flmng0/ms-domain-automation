@@ -13,18 +13,26 @@ class Firepower():
         headers = {'Content-Type': 'application/json'}
         request_url = f"{self.request_pre}/fmc_platform/v1/auth/generatetoken"
 
+        self.generate_auth_token()
+
+    def generate_auth_token(self):
+        logging.info('Attempting to generate Firepower authentication token...')
         try:
-            logging.info('Attempting to authenticate with Firepower')
             req = requests.post(request_url, auth=auth, headers=headers, verify=False)
+
+            if 200 <= req.status_code <= 300:
+                self.auth_token = req.headers.get('X-auth-access-token', default=None)
+                self.domain = req.headers.get('DOMAIN_UUID', default=None)
+
+                if self.auth_token == None or self.domain == None:
+                    raise Exception("Authentication token not found in HTTP response's headers")
+            else:
+                raise Exception(f"HTTP request failed. Status: {req.status_code}: {req.reason}")
+
         except Exception as err:
-            logging.error('Failed to retrieve authentication code for FMC')
+            logging.error('Failed to retrieve authentication token for FMC')
             raise
 
-        if 200 <= req.status_code <= 300:
-            self.auth_token = req.headers.get('X-auth-access-token', default=None)
-            self.domain = req.headers.get('DOMAIN_UUID', default=None)
-        else:
-            raise Exception(f"Failed to retrieve authentication code for FMC. Status: {req.status_code}: {req.reason}")
 
     def send_request(self, method, endpoint, data=None):
         headers = {'Content-Type': 'application/json', 'X-auth-access-token': self.auth_token}
@@ -39,7 +47,7 @@ class Firepower():
             )
 
         if not 200 <= req.status_code <= 300:
-            raise Exception(f'Unable to send request: Status {req.status_code}. {req.reason}')
+            raise Exception(f'HTTP request failed. Status {req.status_code}. {req.reason}')
 
         return req.json()
 
