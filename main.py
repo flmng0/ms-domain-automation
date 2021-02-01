@@ -2,36 +2,58 @@ from util import Util
 from firepower import Firepower
 from uuid import uuid3, NAMESPACE_URL
 
+import logging
 import requests
+import signal
 import pprint
 import getpass
 import os
 import time
 
+def graceful_exit(sig, frame):
+    logging.info('Shutting down, Ctrl-C pressed')
+    exit()
+
 def env_or_prompt(name, prompt):
     out = os.getenv(name)
     if out:
-        print(f'Using {name} value: {out}')
+        logging.info(f'Using {name} value: {out}')
     else:
         out = input(prompt)
 
     return out
 
-def main(util, fmc):
+def run(util, fmc):
     cached_version = util.get_cached_version()
     latest_version = util.get_latest_version()
 
     if int(cached_version) < int(latest_version):
-        print(f'Endpoint update has occured since last run.')
-        print(f'    From: {cached_version}')
-        print(f'      To: {latest_version}')
+        logging.info(f'''\
+Endpoint update has occured since last run.
+    From: {cached_version.strip()}
+      To: {latest_version} \
+''')
+        util.cache_version(latest_version)
+
         endpoints = util.collect_endpoints()
-        print(endpoints.keys())
+        
+        # TODO: Remove when ready for real use
+        print('\nEarly return for testing purposes')
         return
 
+        logging.info('Pushing endpoint updates to Firepower...')
         fmc.update(endpoints, latest_version)
 
+    else:
+        logging.info('No update since last run...')
+
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, graceful_exit)
+
+    logging_format = ':: %(levelname)s [%(asctime)s]: %(message)s'
+    logging_datefmt = '%Y-%m-%d %H:%M:%S'
+    logging.basicConfig(level=logging.INFO, format=logging_format, datefmt=logging_datefmt)
+
     # Setup common interfaces
     requests.packages.urllib3.disable_warnings()
 
@@ -59,15 +81,21 @@ if __name__ == '__main__':
         if response in confirm | deny:
             break
 
-    if response in confirm: # Run every N seconds, where N is MSDA_SERVICE_INTERVAL
-        delay = env_or_prompt('MSDA_SERVICE_INTERVAL', 'How long to wait between checks, in seconds? [3600] ')
-        if delay == '': delay = 3600
-        delay = int(delay)
+    try:
+        if response in confirm: # Run every N seconds, where N is MSDA_SERVICE_INTERVAL
+            delay = env_or_prompt('MSDA_SERVICE_INTERVAL', 'How long to wait between checks, in seconds? [3600] ')
+            if delay == '': delay = 3600
+            delay = int(delay)
 
-        while True:
-            main(util, fmc)
-            time.sleep(delay)
+            logging.info(f'Starting updater as a service, running every {delay} seconds...')
+            while True:
+                run(util, fmc)
+                time.sleep(delay)
 
-    elif response in deny: # Run once
-        main(util, fmc)
+        elif response in deny: # Run once
+            logging.info('Running once...')
+            run(util, fmc)
+
+    except Exception as err:
+        logging.error(str(err))
 
