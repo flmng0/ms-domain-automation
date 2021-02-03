@@ -44,6 +44,8 @@ Endpoint update has occured since last run.
         logging.info('Pushing endpoint updates to Firepower...')
         fmc.update(endpoints, latest_version)
 
+        util.notify_updates(cached_version, latest_version)
+
     else:
         logging.info('No update since last run...')
 
@@ -52,7 +54,12 @@ if __name__ == '__main__':
 
     logging_format = ':: %(levelname)s [%(asctime)s]: %(message)s'
     logging_datefmt = '%Y-%m-%d %H:%M:%S'
-    logging.basicConfig(level=logging.INFO, format=logging_format, datefmt=logging_datefmt)
+    logging.basicConfig(
+            level=logging.INFO, 
+            format=logging_format, 
+            datefmt=logging_datefmt,
+            filename="cache/log.txt"
+        )
 
     # Setup common interfaces
     requests.packages.urllib3.disable_warnings()
@@ -66,8 +73,7 @@ if __name__ == '__main__':
     fmc_user = env_or_prompt('FMC_USER', 'Input FMC Username: ')
     fmc_pass = getpass.getpass('Enter FMC password: ')
 
-    # fmc = Firepower(fmc_host, (fmc_user, fmc_pass))
-    fmc = "rando test str"
+    fmc = Firepower(fmc_host, (fmc_user, fmc_pass))
 
     # TODO: Initialize SMTP connection
 

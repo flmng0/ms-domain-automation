@@ -15,6 +15,7 @@ class Util():
         self.client_id = client_id
         self.instance = instance
         self.proxies = proxies
+        self.service_areas = {}
 
     # Get the latest version of the O365 endpoints.
     def get_latest_version(self):
@@ -64,6 +65,12 @@ class Util():
 
         for obj in data:
             sa = obj['serviceArea']
+
+            # Associate this endpoint set with its service area.
+            #
+            # This is used when sending emails regarding changes, to 
+            # organise.
+            self.service_areas[obj['id']] = sa
             
             # Initialize the sets if they don't exist
             #
@@ -88,3 +95,37 @@ class Util():
                 out[sa]['urls'] = out[sa]['urls'] | {url.replace('*','') for url in obj['urls']}
             
         return out
+
+    def notify_changes(self, old_version, new_version):
+        request_url = f'{O365_PREFIX}/changes/{self.instance}/{old_version}?clientrequestid={self.client_id}&NoIPv6=true'
+        data = requests.get(request_url, proxies=self.proxies).json()
+
+        changes = {}
+
+        disposition_names = {
+            'AddedIp': 'Added IPs',
+            'AddedUrl': 'Added URLs',
+            'AddedIpOrUrl': 'Added IPs or URLs',
+            'RemovedIpOrUrl': 'Removed IPs or URLs',
+        }
+
+        for obj in data:
+            endpoint_id = obj['endpointSetId']
+            sa = self.service_areas[endpoint_id]
+
+            if not sa in changes:
+                changes[sa] = []
+
+            disposition = obj[disposition]
+            if 'IpOrUrl' in disposition:
+                base_change = disposition[:-len('IpOrUrl')]
+                
+                if base_change == 'Removed':
+                    pass
+                    
+                pass
+                
+            elif obj[disposition] in disposition_names:
+                pass
+
+        pass
