@@ -1,5 +1,6 @@
 import util
 
+from datetime import datetime, timedelta
 import requests
 import json
 import os
@@ -33,8 +34,20 @@ class Firepower():
             logging.error('Failed to retrieve authentication token for FMC')
             raise
 
+        # If successful, record the time that the authentication code was retrieved
+        now = datetime.now()
+        self.last_auth = now
+
+    def maybe_regenerate_token(self):
+        now = datetime.now()
+        elapsed = (now - self.last_auth) / timedelta(minutes=1)
+
+        if elapsed >= 30:
+            self.generate_auth_token()
 
     def send_request(self, method, endpoint, data=None):
+        self.maybe_regenerate_token()
+
         headers = {'Content-Type': 'application/json', 'X-auth-access-token': self.auth_token}
         request_url = f'{self.request_pre}/fmc_config/v1/domain/{self.domain}/{endpoint}'
 
