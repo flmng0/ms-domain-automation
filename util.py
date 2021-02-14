@@ -96,11 +96,31 @@ class Util():
             
         return out
 
-    def notify_changes(self, old_version, new_version):
+    def collect_changes(old_version):
         request_url = f'{O365_PREFIX}/changes/{self.instance}/{old_version}?clientrequestid={self.client_id}&NoIPv6=true'
         data = requests.get(request_url, proxies=self.proxies).json()
 
         changes = {}
+
+        impact_blacklist = { 'MovedIpOrUrl', 'OtherNonPriorityChanges' }
+
+        for obj in data:
+            impact = obj['impact']
+            if impact in impact_blacklist:
+                continue
+
+            endpoint_id = obj['endpointSetId']
+            sa = self.service_areas[endpoint_id]
+
+            if not sa in changes:
+                changes[sa] = []
+
+            affects = { 'ips': None, 'urls': None }
+
+            # NOTE: Was here
+
+
+    def notify_changes(self, old_version, new_version):
 
         disposition_names = {
             'AddedIp': 'Added IPs',
@@ -109,12 +129,6 @@ class Util():
             'RemovedIpOrUrl': 'Removed IPs or URLs',
         }
 
-        for obj in data:
-            endpoint_id = obj['endpointSetId']
-            sa = self.service_areas[endpoint_id]
-
-            if not sa in changes:
-                changes[sa] = []
 
             disposition = obj[disposition]
             if 'IpOrUrl' in disposition:
@@ -125,7 +139,5 @@ class Util():
                     
                 pass
                 
-            elif obj[disposition] in disposition_names:
-                pass
 
         pass
